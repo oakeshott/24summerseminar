@@ -54,11 +54,6 @@ struct pkt_leaf_t {
 
 BPF_TABLE("lru_hash", struct pkt_key_t, struct pkt_leaf_t, sessions, 1024);
 BPF_HASH(pktcnt, int, u32);
-BPF_ARRAY(childrenLeft, int64_t, DT_CHILDREN_LEFT_SIZE);
-BPF_ARRAY(childrenRight, int64_t, DT_CHILDREN_RIGHT_SIZE);
-BPF_ARRAY(feature, int64_t, DT_FEATURE_SIZE);
-BPF_ARRAY(threshold, int64_t, DT_THRESHOLD_SIZE);
-BPF_ARRAY(value, int64_t, DT_VALUE_SIZE);
 
 int dt_tc_drop_packet(struct __sk_buff *skb) {
   int64_t ts = bpf_ktime_get_ns();
