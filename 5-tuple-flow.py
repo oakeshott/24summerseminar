@@ -134,7 +134,7 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       zero.num_packets = 0;
       zero.last_packet_timestamp = ts;
       sessions.update(&pkt_key, &zero);
-      // pkt_leaf = sessions.lookup(&pkt_key);
+      pkt_leaf = sessions.lookup(&pkt_key);
     }
     /* ADD FLOW EXTRACTION CODE HERE */
     u32 val = 0, *vp, _zero = 0;
