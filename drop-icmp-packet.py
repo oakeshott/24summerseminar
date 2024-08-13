@@ -112,7 +112,7 @@ if __name__ == '__main__':
             try:
                 time.sleep(1)
                 for k, v in pktcnt.items():
-                    print("# dropped packets: {v.value}")
+                    print(f"# dropped packets: {v.value}")
             except KeyboardInterrupt:
                 break
     finally:

@@ -134,7 +134,7 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       zero.num_packets = 0;
       zero.last_packet_timestamp = ts;
       sessions.update(&pkt_key, &zero);
-      // pkt_leaf = sessions.lookup(&pkt_key);
+      pkt_leaf = sessions.lookup(&pkt_key);
     }
     if (pkt_leaf != NULL) {
       pkt_leaf->num_packets += 1;
@@ -175,6 +175,9 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       int64_t feat[NUM_FEATURES] = {sport, dport, protocol, tot_len, interval_time, direction, avg_tot_len, avg_interval_time, avg_direction, avg_dev_tot_len, avg_dev_interval_time, avg_dev_direction};
       sessions.update(&pkt_key, pkt_leaf);
 
+      u32 val = 0, *vp, _zero = 0;
+      vp = pktcnt.lookup_or_init(&_zero, &val);
+      *vp += 1;
     }
   }
 
@@ -202,26 +205,6 @@ if __name__ == '__main__':
         usage()
     device = sys.argv[1]
 
-    prefix_path = "dt"
-    with open(f'{prefix_path}/children_left', 'r') as f:
-        children_left = np.array(json.load(f))
-    with open(f'{prefix_path}/children_right', 'r') as f:
-        children_right = np.array(json.load(f))
-    with open(f'{prefix_path}/threshold', 'r') as f:
-        threshold = np.array(json.load(f))
-    with open(f'{prefix_path}/feature', 'r') as f:
-        feature = np.array(json.load(f))
-    with open(f'{prefix_path}/value', 'r') as f:
-        value = np.array(json.load(f))
-
-    bpf_text = bpf_text.replace('DT_CHILDREN_LEFT_SIZE', f"{len(children_left)}")
-    bpf_text = bpf_text.replace('DT_CHILDREN_RIGHT_SIZE', f"{len(children_right)}")
-    bpf_text = bpf_text.replace('DT_FEATURE_SIZE', f"{len(feature)}")
-    bpf_text = bpf_text.replace('DT_VALUE_SIZE', f"{len(value)}")
-    bpf_text = bpf_text.replace('DT_THRESHOLD_SIZE', f"{len(threshold)}")
-    bpf_text = bpf_text.replace('DT_MAX_TREE_DEPTH', f"20")
-
-
     INGRESS = "ffff:ffff2"
     EGRESS = "ffff:ffff3"
 
@@ -240,28 +223,15 @@ if __name__ == '__main__':
         pktcnt   = b.get_table("pktcnt")
         sessions = b.get_table("sessions")
 
-        map_children_right = b.get_table("childrenRight")
-        map_children_left  = b.get_table("childrenLeft")
-        map_value          = b.get_table("value")
-        map_threshold      = b.get_table("threshold")
-        map_feature        = b.get_table("feature")
-
-
-        map_bpf_table(map_children_right, children_right)
-        map_bpf_table(map_children_left, children_left)
-        map_bpf_table(map_value, value)
-        map_bpf_table(map_threshold, threshold)
-        map_bpf_table(map_feature, feature)
-
         while True:
             try:
                 pktcnt.clear()
                 time.sleep(1)
                 for k, v in sessions.items():
-                    print("key: {k.saddr}:{k.sport} -> {k.daddr}:{k.dport} {k.protocol}")
-                    print("value: num_packets={v.num_packets}, last_packet_timestamp={v.last_packet_timestamp}, sport={v.sport}, dport={v.dport}, features[0]={v.features[0]}, features[1]={v.features[1]}, features[2]={v.features[2]}, features[3]={v.features[3]}, features[4]={v.features[4]}, features[5]={v.features[5]}")
+                    print(f"key: {inet_ntop(AF_INET, pack('I', k.saddr))}:{k.sport} -> {inet_ntop(AF_INET, pack('I', k.daddr))}:{k.dport} {k.protocol}")
+                    print(f"value: num_packets={v.num_packets}, last_packet_timestamp={v.last_packet_timestamp}, sport={v.sport}, dport={v.dport}, features[0]={v.features[0]}, features[1]={v.features[1]}, features[2]={v.features[2]}, features[3]={v.features[3]}, features[4]={v.features[4]}, features[5]={v.features[5]}")
                 for k, v in pktcnt.items():
-                    print("Packet rate: {v.value}")
+                    print(f"Packet rate: {v.value}")
             except KeyboardInterrupt:
                 break
     finally:

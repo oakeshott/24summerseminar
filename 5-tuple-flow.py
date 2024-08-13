@@ -6,7 +6,7 @@ from bcc import lib, table
 from pyroute2 import IPRoute
 import sys
 import time
-from socket import inet_ntop, ntohs, AF_INET, AF_INET6
+from socket import inet_ntop, ntohs, AF_INET, AF_INET6, inet_ntoa
 from struct import pack
 import ctypes as ct
 import json
@@ -137,6 +137,9 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       // pkt_leaf = sessions.lookup(&pkt_key);
     }
     /* ADD FLOW EXTRACTION CODE HERE */
+    u32 val = 0, *vp, _zero = 0;
+    vp = pktcnt.lookup_or_init(&_zero, &val);
+    *vp += 1;
   }
 
   EOP: {
@@ -163,26 +166,6 @@ if __name__ == '__main__':
         usage()
     device = sys.argv[1]
 
-    prefix_path = "dt"
-    with open(f'{prefix_path}/children_left', 'r') as f:
-        children_left = np.array(json.load(f))
-    with open(f'{prefix_path}/children_right', 'r') as f:
-        children_right = np.array(json.load(f))
-    with open(f'{prefix_path}/threshold', 'r') as f:
-        threshold = np.array(json.load(f))
-    with open(f'{prefix_path}/feature', 'r') as f:
-        feature = np.array(json.load(f))
-    with open(f'{prefix_path}/value', 'r') as f:
-        value = np.array(json.load(f))
-
-    bpf_text = bpf_text.replace('DT_CHILDREN_LEFT_SIZE', f"{len(children_left)}")
-    bpf_text = bpf_text.replace('DT_CHILDREN_RIGHT_SIZE', f"{len(children_right)}")
-    bpf_text = bpf_text.replace('DT_FEATURE_SIZE', f"{len(feature)}")
-    bpf_text = bpf_text.replace('DT_VALUE_SIZE', f"{len(value)}")
-    bpf_text = bpf_text.replace('DT_THRESHOLD_SIZE', f"{len(threshold)}")
-    bpf_text = bpf_text.replace('DT_MAX_TREE_DEPTH', f"20")
-
-
     INGRESS = "ffff:ffff2"
     EGRESS = "ffff:ffff3"
 
@@ -201,27 +184,14 @@ if __name__ == '__main__':
         pktcnt   = b.get_table("pktcnt")
         sessions = b.get_table("sessions")
 
-        map_children_right = b.get_table("childrenRight")
-        map_children_left  = b.get_table("childrenLeft")
-        map_value          = b.get_table("value")
-        map_threshold      = b.get_table("threshold")
-        map_feature        = b.get_table("feature")
-
-
-        map_bpf_table(map_children_right, children_right)
-        map_bpf_table(map_children_left, children_left)
-        map_bpf_table(map_value, value)
-        map_bpf_table(map_threshold, threshold)
-        map_bpf_table(map_feature, feature)
-
         while True:
             try:
                 pktcnt.clear()
                 time.sleep(1)
                 for k, v in sessions.items():
-                    print("key: {k.saddr}:{k.sport} -> {k.daddr}:{k.dport} {k.protocol}")
+                    print(f"{inet_ntop(AF_INET, pack('I', k.saddr))}:{k.sport} -> {inet_ntop(AF_INET, pack('I', k.daddr))}:{k.dport} {k.protocol}")
                 for k, v in pktcnt.items():
-                    print("Packet rate: {v.value}")
+                    print(f"Packet rate: {v.value}")
             except KeyboardInterrupt:
                 break
     finally:

@@ -139,7 +139,7 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       zero.num_packets = 0;
       zero.last_packet_timestamp = ts;
       sessions.update(&pkt_key, &zero);
-      // pkt_leaf = sessions.lookup(&pkt_key);
+      pkt_leaf = sessions.lookup(&pkt_key);
     }
     if (pkt_leaf != NULL) {
       pkt_leaf->num_packets += 1;
@@ -183,6 +183,9 @@ int dt_tc_drop_packet(struct __sk_buff *skb) {
       /*
       ADD BINARY CLASSIFICATION USING DT HERE
       */
+      u32 val = 0, *vp, _zero = 0;
+      vp = pktcnt.lookup_or_init(&_zero, &val);
+      *vp += 1;
     }
   }
 
@@ -264,7 +267,7 @@ if __name__ == '__main__':
                 pktcnt.clear()
                 time.sleep(1)
                 for k, v in pktcnt.items():
-                    print("Packet rate: {v.value}")
+                    print(f"Packet rate: {v.value}")
             except KeyboardInterrupt:
                 break
     finally:
